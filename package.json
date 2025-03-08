@@ -1,0 +1,13 @@
+{
+  "name": "tabcloser-chrome",
+  "version": "0.3.0",
+  "description": "Chrome extension for Tabcloser using Manifest V3.",
+  "scripts": {
+    "clean": "rm -rf dist && mkdir dist",
+    "build": "npm run clean && bun build src/*.ts --outdir=dist",
+    "zip": "npm run build && zip -r tabcloser.zip manifest.json options.html dist icons"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.308"
+  }
+}
