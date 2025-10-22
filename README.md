@@ -4,9 +4,7 @@ Easily manage having too many tabs.
 
 ## Using tabcloser
 
-Clicking on the extension icon will close all other tabs across all windows. You can right click for different options.
-
-Under the right click menu there is also an options pane you can select to protect certain urls or pinned tabs. That's it!
+Clicking on the extension icon will close all other tabs across all windows. Under the right click menu there is also an options pane you can select to protect certain tabs/windows.
 
 ### Keyboard Shortcuts
 

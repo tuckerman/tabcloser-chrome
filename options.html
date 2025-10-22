@@ -1,21 +1,42 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Tabcloser</title>
+  <meta charset="utf-8" />
+  <title>Tabcloser · Options</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+    form { display: grid; gap: 1rem; }
+    textarea { width: 100%; box-sizing: border-box; }
+    .row { display: flex; align-items: center; gap: .5rem; }
+    #status { min-height: 1em; }
+  </style>
 </head>
 <body>
   <h1>Options</h1>
-  <label for="protectedUrls">Protected URLs (comma-separated):</label>
-  <textarea id="protectedUrls" rows="4" cols="50"></textarea>
 
-  <label for="protectPinnedTabs">
-    <input type="checkbox" id="protectPinnedTabs"> Protect pinned tabs
-  </label>
+  <form id="options">
+    <label>
+      Protected URLs (one per line)
+      <textarea name="protectedUrls" rows="8" placeholder="https://example.com&#10;*://meet.google.com/*"></textarea>
+    </label>
 
-  <br /><br />
+    <label class="row">
+      <input type="checkbox" name="protectPinnedTabs" />
+      Protect pinned tabs
+    </label>
 
-  <button id="save">Save</button>
+    <label class="row">
+      <input type="checkbox" name="protectApps" />
+      Protect app windows
+    </label>
 
-  <script src="dist/options.js"></script>
+    <div class="row">
+      <button type="submit">Save</button>
+      <span id="status" aria-live="polite"></span>
+    </div>
+  </form>
+
+  <script src="dist/options.js" type="module"></script>
 </body>
 </html>

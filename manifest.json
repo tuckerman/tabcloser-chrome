@@ -12,8 +12,7 @@
     "service_worker": "dist/background.js"
   },
   "permissions": [
-    "contextMenus",
-    "storage"
+    "storage", "tabs"
   ],
   "action": {
     "default_icon": {

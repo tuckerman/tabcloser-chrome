@@ -1,119 +1,45 @@
-// Create context menus on extension installation
-chrome.runtime.onInstalled.addListener(() => {
-  const contextMenus: Array<{ id: string; title: string }> = [
-    { id: "closeOtherTabs", title: "Close Other Tabs" },
-    { id: "closeOtherTabsSameWindow", title: "Close Other Tabs (Same Window)" },
-    { id: "closeOtherWindows", title: "Close Other Windows" },
-    { id: "closeEverything", title: "Close Everything" }
-  ];
+// background.ts
+import { getOptions } from "./common.js";
+import { minimatch } from "minimatch";
 
-  contextMenus.forEach(menu => {
-    chrome.contextMenus.create({
-      id: menu.id,
-      title: menu.title,
-      contexts: ["all"]
-    });
-  });
-});
+async function isTabProtected(tab: chrome.tabs.Tab): Promise<boolean> {
+  const { protectedUrls, protectPinnedTabs, protectApps } = await getOptions();
 
-// Helper function: determines whether a tab should be protected
-function isTabProtected(
-  tab: chrome.tabs.Tab,
-  callback: (isProtected: boolean) => void
-): void {
-  chrome.storage.sync.get(["protectedUrls", "protectPinnedTabs"], (result) => {
-    const protectedUrls: string[] = result.protectedUrls
-      ? result.protectedUrls.split(",").map((url: string) => url.trim())
-      : [];
-    const urlProtected = tab.url ? protectedUrls.some(pUrl => tab.url!.includes(pUrl)) : false;
-    const pinnedProtected = result.protectPinnedTabs && tab.pinned;
-    callback(urlProtected || pinnedProtected);
-  });
-}
+  if (protectPinnedTabs && tab.pinned) {
+    return true;
+  }
 
-// Context menu click handler
-chrome.contextMenus.onClicked.addListener(
-  (info: chrome.contextMenus.OnClickData, tab?: chrome.tabs.Tab) => {
-    if (!tab) return;
+  if (tab.url && protectedUrls.some(p => minimatch(tab.url!, p))) {
+    return true;
+  }
 
-    if (info.menuItemId === "closeOtherTabs") {
-      chrome.tabs.query({}, (tabs: chrome.tabs.Tab[]) => {
-        tabs.forEach(t => {
-          if (t.id !== tab.id) {
-            isTabProtected(t, (isProtected) => {
-              if (!isProtected && t.id !== undefined) {
-                chrome.tabs.remove(t.id);
-              }
-            });
-          }
-        });
-      });
-    } else if (info.menuItemId === "closeOtherTabsSameWindow") {
-      chrome.tabs.query({ windowId: tab.windowId }, (tabs: chrome.tabs.Tab[]) => {
-        tabs.forEach(t => {
-          if (t.id !== tab.id) {
-            isTabProtected(t, (isProtected) => {
-              if (!isProtected && t.id !== undefined) {
-                chrome.tabs.remove(t.id);
-              }
-            });
-          }
-        });
-      });
-    } else if (info.menuItemId === "closeOtherWindows") {
-      chrome.windows.getAll({}, (windows: chrome.windows.Window[]) => {
-        windows.forEach(w => {
-          if (w.id !== tab.windowId && w.id !== undefined) {
-            chrome.windows.remove(w.id);
-          }
-        });
-      });
-    } else if (info.menuItemId === "closeEverything") {
-      chrome.windows.getAll({}, (windows: chrome.windows.Window[]) => {
-        windows.forEach(w => {
-          if (w.id !== undefined) {
-            chrome.windows.remove(w.id);
-          }
-        });
-      });
+  if (protectApps && tab.windowId != null) {
+    try {
+      const win = await chrome.windows.get(tab.windowId);
+      if (win.type === "app") return true;
+    } catch {
+      // ignored
     }
   }
-);
 
-// Action (toolbar icon) click handler
-chrome.action.onClicked.addListener((tab?: chrome.tabs.Tab) => {
-  if (!tab) return;
-  chrome.tabs.query({}, (tabs: chrome.tabs.Tab[]) => {
-    tabs.forEach(t => {
-      if (t.id !== tab.id) {
-        isTabProtected(t, (isProtected) => {
-          if (!isProtected && t.id !== undefined) {
-            chrome.tabs.remove(t.id);
-          }
-        });
-      }
-    });
-  });
-});
+  return false;
+}
 
-// Command (keyboard shortcut) handler
-chrome.commands.onCommand.addListener((command: string) => {
-  if (command === "closeOtherTabs") {
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs: chrome.tabs.Tab[]) => {
-      if (tabs && tabs[0]) {
-        const activeTab = tabs[0];
-        chrome.tabs.query({}, (allTabs: chrome.tabs.Tab[]) => {
-          allTabs.forEach(t => {
-            if (t.id !== activeTab.id) {
-              isTabProtected(t, (isProtected) => {
-                if (!isProtected && t.id !== undefined) {
-                  chrome.tabs.remove(t.id);
-                }
-              });
-            }
-          });
-        });
-      }
-    });
+async function closeOtherTabs(active: chrome.tabs.Tab): Promise<void> {
+  const all = await chrome.tabs.query({});
+  for (const t of all) {
+    if (!t.id || t.id === active.id) continue;
+    if (!(await isTabProtected(t))) await chrome.tabs.remove(t.id);
   }
+}
+
+async function handleCloseOtherTabs(): Promise<void> {
+  const [active] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!active) return;
+  await closeOtherTabs(active);
+}
+
+chrome.action.onClicked.addListener(handleCloseOtherTabs);
+chrome.commands.onCommand.addListener(async (cmd) => {
+  if (cmd === "closeOtherTabs") await handleCloseOtherTabs();
 });
